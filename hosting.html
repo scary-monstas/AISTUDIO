@@ -265,6 +265,30 @@
         }
         #statusToast.show { transform: translateY(0); }
 
+        /* Env Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 99999;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+        .modal-content {
+            background: var(--bg-panel);
+            padding: 30px;
+            border-radius: 12px;
+            width: 600px;
+            max-width: 90%;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        .env-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .env-row input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; outline: none; }
+        .env-row input:focus { border-color: var(--primary); }
+        .help-text { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+        code { background: var(--bg-dark); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+
         /* Responsive */
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -332,12 +356,34 @@
                 <span><i class="ph ph-file-code"></i> index.html</span>
                 <span id="saveStatus" style="display: none; align-items: center; gap: 4px; font-weight: 500;"></span>
             </div>
-            <textarea id="codeEditor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello BCM AI STUDIO</h1>&#10;</body>&#10;</html>"></textarea>
+            <textarea id="codeEditor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello BCM AI STUDIO</h1>&#10;  <script>&#10;    // Access your environment variables anywhere like this:&#10;    console.log(window.ENV.API_KEY);&#10;  </script>&#10;</body>&#10;</html>"></textarea>
         </div>
 
-        <button class="btn" id="btnDeploy" style="padding: 16px; font-size: 16px;">
-            <i class="ph ph-rocket-launch" id="deployBtnIcon"></i> <span id="deployBtnText">Deploy to Netlify</span>
-        </button>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" id="btnEnv" style="flex: 1; padding: 16px; font-size: 16px;">
+                <i class="ph ph-sliders"></i> Environment Variables
+            </button>
+            <button class="btn" id="btnDeploy" style="flex: 2; padding: 16px; font-size: 16px;">
+                <i class="ph ph-rocket-launch" id="deployBtnIcon"></i> <span id="deployBtnText">Deploy to Netlify</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Env Variables Modal -->
+<div id="envModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 style="margin-top: 0;">Environment Variables</h3>
+        <p class="help-text">These variables are securely injected into your site's header by Netlify. Access them in your HTML/JS using <code>window.ENV.YOUR_KEY_NAME</code>.</p>
+        
+        <div id="envList"></div>
+        
+        <button class="btn btn-outline" id="btnAddEnvRow" style="margin-top: 10px; width: auto;">+ Add Variable</button>
+        
+        <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-outline" id="btnCancelEnv" style="width: auto;">Cancel</button>
+            <button class="btn" id="btnSaveEnv" style="width: auto;">Save & Close</button>
+        </div>
     </div>
 </div>
 
@@ -360,6 +406,7 @@
     let sites = [];
     let currentSiteId = null;
     let autoSaveTimer = null;
+    let currentEnvVars = {}; // Holds environment variables locally before deploy
 
     // ==========================================
     // 2. EVENT LISTENERS
@@ -370,6 +417,12 @@
         document.getElementById('btnLive').addEventListener('click', openLiveSite);
         document.getElementById('btnDownload').addEventListener('click', downloadCode);
         document.getElementById('btnDelete').addEventListener('click', deleteCurrentSite);
+        
+        // Env Modal Listeners
+        document.getElementById('btnEnv').addEventListener('click', openEnvModal);
+        document.getElementById('btnAddEnvRow').addEventListener('click', () => addEnvRow());
+        document.getElementById('btnCancelEnv').addEventListener('click', closeEnvModal);
+        document.getElementById('btnSaveEnv').addEventListener('click', saveEnvModal);
 
         // Auto-save listener
         document.getElementById('codeEditor').addEventListener('input', handleAutoSave);
@@ -396,6 +449,7 @@
 
     function startNewSite() {
         currentSiteId = null;
+        currentEnvVars = {};
         document.getElementById('editorTitle').innerText = 'New Project';
         document.getElementById('projectName').value = '';
         document.getElementById('projectName').disabled = false;
@@ -408,31 +462,34 @@
         renderSiteList();
     }
 
-    function selectSite(id) {
+    async function selectSite(id) {
         const site = sites.find(s => s.id === id);
         if(!site) return;
 
         currentSiteId = id;
         document.getElementById('editorTitle').innerText = 'Editing: ' + site.name;
         document.getElementById('projectName').value = site.name;
-        document.getElementById('projectName').disabled = false; // Allow renaming project locally
+        document.getElementById('projectName').disabled = false;
         
-        // Extract subdomain from URL
         let sub = '';
         if (site.url) {
-            try {
-                const urlObj = new URL(site.url);
-                sub = urlObj.hostname.split('.')[0];
-            } catch(e) {}
+            try { sub = new URL(site.url).hostname.split('.')[0]; } catch(e) {}
         }
         document.getElementById('subdomain').value = sub;
-        document.getElementById('subdomain').disabled = true; // Netlify subdomain can't be changed here easily
+        document.getElementById('subdomain').disabled = true; 
         
         document.getElementById('codeEditor').value = site.last_code;
         
-        // Safely update button text
         const btnTextSpan = document.getElementById('deployBtnText');
+        const btnIcon = document.getElementById('deployBtnIcon');
+        if (btnTextSpan) btnTextSpan.innerText = 'Loading...';
+        if (btnIcon) btnIcon.className = 'ph ph-spinner ph-spin';
+        
+        // Fetch Environment Variables from Netlify Snippets
+        await fetchEnvVars(site.netlify_site_id);
+        
         if (btnTextSpan) btnTextSpan.innerText = 'Update Deployment';
+        if (btnIcon) btnIcon.className = 'ph ph-rocket-launch';
         
         document.getElementById('headerActions').style.display = 'flex';
         document.getElementById('saveStatus').style.display = 'none';
@@ -440,10 +497,126 @@
     }
 
     // ==========================================
-    // 4. AUTO-SAVE LOGIC
+    // 4. ENVIRONMENT VARIABLES LOGIC
+    // ==========================================
+    function openEnvModal() {
+        const list = document.getElementById('envList');
+        list.innerHTML = '';
+        
+        for (const [k, v] of Object.entries(currentEnvVars)) {
+            addEnvRow(k, v);
+        }
+        if(Object.keys(currentEnvVars).length === 0) {
+            addEnvRow('', '');
+        }
+        
+        document.getElementById('envModal').classList.add('show');
+    }
+
+    function closeEnvModal() {
+        document.getElementById('envModal').classList.remove('show');
+    }
+
+    function addEnvRow(k = '', v = '') {
+        const div = document.createElement('div');
+        div.className = 'env-row';
+        div.innerHTML = `
+            <input type="text" placeholder="API_KEY_NAME" value="${k}" class="env-key">
+            <input type="text" placeholder="Value (e.g. sk-12345)" value="${v}" class="env-val">
+            <button class="btn btn-danger" style="width: auto; padding: 12px;" onclick="this.parentElement.remove()">
+                <i class="ph ph-trash"></i>
+            </button>
+        `;
+        document.getElementById('envList').appendChild(div);
+    }
+
+    function saveEnvModal() {
+        currentEnvVars = {};
+        document.querySelectorAll('.env-row').forEach(row => {
+            const k = row.querySelector('.env-key').value.trim();
+            const v = row.querySelector('.env-val').value.trim();
+            if (k) currentEnvVars[k] = v;
+        });
+        closeEnvModal();
+        showToast('Variables saved locally. Click Deploy to push them to Netlify.');
+    }
+
+    async function fetchEnvVars(netlifySiteId) {
+        try {
+            const res = await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/snippets`, {
+                headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}` }
+            });
+            if(!res.ok) return;
+            const snippets = await res.json();
+            const envSnippet = snippets.find(s => s.title === 'bcm_env_vars');
+            
+            if(envSnippet) {
+                // Extract JSON from script tag
+                const match = envSnippet.general.match(/window\.ENV\s*=\s*(\{.*?\});/);
+                if(match && match[1]) {
+                    currentEnvVars = JSON.parse(match[1]);
+                }
+            } else {
+                currentEnvVars = {};
+            }
+        } catch(e) { 
+            console.error(e); 
+            currentEnvVars = {}; 
+        }
+    }
+
+    async function syncEnvVars(netlifySiteId) {
+        try {
+            const res = await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/snippets`, {
+                headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}` }
+            });
+            const snippets = await res.json();
+            const envSnippet = snippets.find(s => s.title === 'bcm_env_vars');
+
+            // If no vars, delete snippet if it exists
+            if (Object.keys(currentEnvVars).length === 0) {
+                if (envSnippet) {
+                    await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/snippets/${envSnippet.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}` }
+                    });
+                }
+                return;
+            }
+
+            // Create snippet string
+            const snippetCode = `<script>window.ENV = ${JSON.stringify(currentEnvVars)};<\/script>`;
+            const payload = {
+                title: "bcm_env_vars",
+                general: snippetCode,
+                general_position: "head"
+            };
+
+            if (envSnippet) {
+                // Update existing
+                await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/snippets/${envSnippet.id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Create new
+                await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/snippets`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+        } catch(e) {
+            console.error("Failed to sync env vars", e);
+        }
+    }
+
+    // ==========================================
+    // 5. AUTO-SAVE LOGIC
     // ==========================================
     function handleAutoSave() {
-        if (!currentSiteId) return; // Only auto-save if project already exists
+        if (!currentSiteId) return;
 
         const status = document.getElementById('saveStatus');
         status.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
@@ -456,7 +629,6 @@
             const projName = document.getElementById('projectName').value.trim();
 
             try {
-                // Update Supabase Database
                 const { error } = await supabaseClient
                     .from('bcm_sites')
                     .update({ 
@@ -467,16 +639,13 @@
                 
                 if (error) throw error;
 
-                // Update local state so UI doesn't lag
                 const site = sites.find(s => s.id === currentSiteId);
                 if(site) {
                     site.last_code = code;
                     if(projName) site.name = projName;
                 }
                 
-                // Render sidebar in case name changed
                 renderSiteList();
-
                 status.innerHTML = '<i class="ph ph-check"></i> Saved';
                 status.style.color = 'var(--primary)';
                 setTimeout(() => status.style.display = 'none', 2000);
@@ -485,11 +654,11 @@
                 status.innerHTML = '<i class="ph ph-warning-circle"></i> Failed to save';
                 status.style.color = 'var(--danger)';
             }
-        }, 1000); // 1-second debounce
+        }, 1000);
     }
 
     // ==========================================
-    // 5. DRAG AND DROP LOGIC
+    // 6. DRAG AND DROP LOGIC
     // ==========================================
     function setupDragAndDrop() {
         const dropZone = document.getElementById('dropZone');
@@ -518,7 +687,7 @@
                 reader.onload = (ev) => {
                     editor.value = ev.target.result;
                     showToast('File loaded successfully!');
-                    handleAutoSave(); // Trigger auto-save if applicable
+                    handleAutoSave(); 
                 };
                 reader.readAsText(file);
             }
@@ -526,7 +695,7 @@
     }
 
     // ==========================================
-    // 6. SUPABASE DATABASE OPERATIONS
+    // 7. SUPABASE DATABASE OPERATIONS
     // ==========================================
     async function fetchSites() {
         try {
@@ -561,7 +730,6 @@
             
             const date = new Date(site.created_at).toLocaleDateString();
             
-            // Extract sub for display
             let subDisplay = 'Unknown URL';
             if (site.url) {
                 try { subDisplay = new URL(site.url).hostname; } catch(e){}
@@ -577,7 +745,7 @@
     }
 
     // ==========================================
-    // 7. NETLIFY + CORE LOGIC
+    // 8. NETLIFY + CORE LOGIC
     // ==========================================
     async function calculateSHA1(text) {
         const encoder = new TextEncoder();
@@ -610,8 +778,8 @@
                 // UPDATE EXISTING SITE
                 const site = sites.find(s => s.id === currentSiteId);
                 await deployToNetlify(site.netlify_site_id, code);
+                await syncEnvVars(site.netlify_site_id); // Sync Env Vars
                 
-                // Update Supabase
                 const finalName = projectName || site.name;
                 const { error } = await supabaseClient
                     .from('bcm_sites')
@@ -634,7 +802,6 @@
                     body: JSON.stringify(sitePayload)
                 });
                 
-                // Handle Netlify API Errors (e.g. Subdomain taken)
                 if (!siteRes.ok) {
                     const errData = await siteRes.json().catch(() => ({}));
                     let errMsg = 'Failed to create site.';
@@ -648,10 +815,9 @@
                 
                 const netlifySite = await siteRes.json();
 
-                // Deploy Code
                 await deployToNetlify(netlifySite.id, code);
+                await syncEnvVars(netlifySite.id); // Sync Env Vars
 
-                // Save to Supabase (Use Project Name if provided, else fallback to Netlify generated name)
                 const newRecord = {
                     netlify_site_id: netlifySite.id,
                     name: projectName || netlifySite.name,
@@ -665,7 +831,6 @@
 
                 sites.unshift(data[0]);
                 
-                // Restore button text BEFORE calling selectSite to prevent errors
                 btnIcon.className = originalIcon;
                 btnTextSpan.innerText = originalText;
                 
@@ -677,7 +842,6 @@
             showToast(err.message || 'Deployment failed.', true);
         } finally {
             btn.disabled = false;
-            // Only restore if it wasn't already restored by the success block
             if(btnTextSpan.innerText === 'Processing...') {
                 btnIcon.className = originalIcon;
                 btnTextSpan.innerText = originalText;
@@ -708,7 +872,7 @@
     }
 
     // ==========================================
-    // 8. HELPER ACTIONS
+    // 9. HELPER ACTIONS
     // ==========================================
     function openLiveSite() {
         const site = sites.find(s => s.id === currentSiteId);
