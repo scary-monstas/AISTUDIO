@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCM AI STUDIO</title>
     
-    <!-- Fix for the favicon 404 error -->
+    <!-- Fix for favicon 404 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Phosphor Icons for premium UI -->
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
@@ -25,6 +25,7 @@
             --text-muted: #94a3b8;
             --border: #334155;
             --accent: #0ea5e9;
+            --success: #10b981;
         }
 
         * { box-sizing: border-box; }
@@ -118,8 +119,9 @@
             background-color: rgba(99, 102, 241, 0.1);
             border-color: var(--primary);
         }
-        .site-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; display: block; }
-        .site-date { font-size: 12px; color: var(--text-muted); }
+        .site-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; display: block; color: var(--text-main); }
+        .site-subdomain { font-size: 12px; color: var(--accent); display: block; margin-bottom: 4px; }
+        .site-date { font-size: 11px; color: var(--text-muted); }
 
         /* Main Editor Area */
         .header {
@@ -143,9 +145,27 @@
             width: 100%;
         }
 
+        .inputs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         label { font-weight: 500; font-size: 14px; color: var(--text-muted); }
         
+        .styled-input {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            padding: 14px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .styled-input:focus { border-color: var(--primary); }
+
         .subdomain-wrapper {
             display: flex;
             align-items: center;
@@ -156,14 +176,13 @@
             transition: border-color 0.2s;
         }
         .subdomain-wrapper:focus-within { border-color: var(--primary); }
-        
-        input[type="text"] {
+        .subdomain-wrapper input {
             background: transparent;
             border: none;
             color: white;
             padding: 14px;
             flex: 1;
-            font-size: 16px;
+            font-size: 15px;
             outline: none;
         }
         .domain-suffix {
@@ -184,6 +203,7 @@
             border-radius: 8px;
             overflow: hidden;
             background: var(--bg-panel);
+            min-height: 300px;
         }
         .code-header {
             padding: 12px 16px;
@@ -194,6 +214,13 @@
             align-items: center;
             font-size: 13px;
             color: var(--text-muted);
+        }
+        #autoSaveStatus {
+            font-size: 12px;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         textarea {
             flex: 1;
@@ -245,6 +272,7 @@
             transform: translateY(150%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 9999;
+            max-width: 450px;
         }
         #statusToast.show { transform: translateY(0); }
 
@@ -254,6 +282,7 @@
             .sidebar { width: 100%; height: 250px; border-right: none; border-bottom: 1px solid var(--border); }
             .header { padding: 15px 20px; flex-direction: column; align-items: flex-start; gap: 15px; }
             .editor-container { padding: 20px; }
+            .inputs-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -291,11 +320,18 @@
     </div>
 
     <div class="editor-container">
-        <div class="input-group">
-            <label for="subdomain">Site Name (Subdomain)</label>
-            <div class="subdomain-wrapper">
-                <input type="text" id="subdomain" placeholder="my-awesome-ai-app" autocomplete="off">
-                <div class="domain-suffix">.netlify.app</div>
+        <div class="inputs-grid">
+            <div class="input-group">
+                <label for="displayName">Project Name (Shown in Sidebar for Team)</label>
+                <input type="text" id="displayName" class="styled-input" placeholder="e.g. Client Landing Page - John" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label for="subdomain">Netlify Subdomain URL</label>
+                <div class="subdomain-wrapper">
+                    <input type="text" id="subdomain" placeholder="my-awesome-app" autocomplete="off">
+                    <div class="domain-suffix">.netlify.app</div>
+                </div>
             </div>
         </div>
 
@@ -306,7 +342,7 @@
             </div>
             <div class="code-header">
                 <span><i class="ph ph-file-code"></i> index.html</span>
-                <span>You can drag & drop a file here</span>
+                <span id="autoSaveStatus"></span>
             </div>
             <textarea id="codeEditor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello BCM AI STUDIO</h1>&#10;</body>&#10;</html>"></textarea>
         </div>
@@ -337,13 +373,12 @@
     // App State
     let sites = [];
     let currentSiteId = null;
+    let autoSaveTimer = null;
 
     // ==========================================
-    // 2. EVENT LISTENERS (Fixed for strict environments)
+    // 2. EVENT LISTENERS & AUTO-SAVE
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
-        console.log("App Initialized");
-        
         // Bind Buttons
         document.getElementById('btnNewProject').addEventListener('click', startNewSite);
         document.getElementById('btnDeploy').addEventListener('click', handleDeploy);
@@ -351,15 +386,51 @@
         document.getElementById('btnDownload').addEventListener('click', downloadCode);
         document.getElementById('btnDelete').addEventListener('click', deleteCurrentSite);
 
+        // Auto-save listeners
+        document.getElementById('codeEditor').addEventListener('input', triggerAutoSave);
+        document.getElementById('displayName').addEventListener('input', triggerAutoSave);
+
         setupDragAndDrop();
         fetchSites();
     });
+
+    function triggerAutoSave() {
+        const statusSpan = document.getElementById('autoSaveStatus');
+        statusSpan.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Auto-saving...';
+        
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(async () => {
+            const code = document.getElementById('codeEditor').value;
+            const displayName = document.getElementById('displayName').value.trim();
+
+            if (currentSiteId) {
+                // Auto-save existing project to Supabase
+                const { error } = await supabaseClient
+                    .from('bcm_sites')
+                    .update({ last_code: code, display_name: displayName })
+                    .eq('id', currentSiteId);
+
+                if (!error) {
+                    const site = sites.find(s => s.id === currentSiteId);
+                    if (site) {
+                        site.last_code = code;
+                        site.display_name = displayName;
+                        renderSiteList();
+                    }
+                    statusSpan.innerHTML = '<i class="ph ph-check-circle"></i> Auto-saved to Database';
+                } else {
+                    statusSpan.innerHTML = '<span style="color:var(--danger)">Auto-save failed</span>';
+                }
+            } else {
+                statusSpan.innerHTML = '<i class="ph ph-cloud-slash"></i> Local Draft';
+            }
+        }, 1000); // 1 sec debounce
+    }
 
     // ==========================================
     // 3. UI & STATE MANAGEMENT
     // ==========================================
     function showToast(msg, isError = false) {
-        console.log("Toast:", msg);
         const toast = document.getElementById('statusToast');
         const icon = document.getElementById('toastIcon');
         document.getElementById('toastMsg').innerText = msg;
@@ -369,15 +440,17 @@
         icon.style.color = isError ? 'var(--danger)' : 'var(--primary)';
         
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 4000);
+        setTimeout(() => toast.classList.remove('show'), 5000);
     }
 
     function startNewSite() {
         currentSiteId = null;
         document.getElementById('editorTitle').innerText = 'New Project';
+        document.getElementById('displayName').value = '';
         document.getElementById('subdomain').value = '';
         document.getElementById('subdomain').disabled = false;
         document.getElementById('codeEditor').value = '';
+        document.getElementById('autoSaveStatus').innerHTML = '';
         document.getElementById('deployBtnText').innerText = 'Deploy to Netlify';
         document.getElementById('headerActions').style.display = 'none';
         renderSiteList();
@@ -388,11 +461,13 @@
         if(!site) return;
 
         currentSiteId = id;
-        document.getElementById('editorTitle').innerText = 'Editing: ' + site.name;
+        document.getElementById('editorTitle').innerText = site.display_name || site.name;
+        document.getElementById('displayName').value = site.display_name || '';
         document.getElementById('subdomain').value = site.name;
-        document.getElementById('subdomain').disabled = true;
+        document.getElementById('subdomain').disabled = true; // Can't change subdomain after creation
         document.getElementById('codeEditor').value = site.last_code;
-        document.getElementById('deployBtnText').innerText = 'Update Deployment';
+        document.getElementById('autoSaveStatus').innerHTML = '<i class="ph ph-check-circle"></i> Saved';
+        document.getElementById('deployBtnText').innerText = 'Update Live Deployment';
         document.getElementById('headerActions').style.display = 'flex';
         renderSiteList();
     }
@@ -405,10 +480,8 @@
         const editor = document.getElementById('codeEditor');
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
         });
-
-        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
@@ -426,6 +499,7 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     editor.value = ev.target.result;
+                    triggerAutoSave();
                     showToast('File loaded successfully!');
                 };
                 reader.readAsText(file);
@@ -464,21 +538,27 @@
         sites.forEach(site => {
             const div = document.createElement('div');
             div.className = `site-item ${site.id === currentSiteId ? 'active' : ''}`;
-            
-            // Add event listener securely
             div.addEventListener('click', () => selectSite(site.id));
             
+            const title = site.display_name || site.name;
+            const sub = `${site.name}.netlify.app`;
             const date = new Date(site.created_at).toLocaleDateString();
+            
             div.innerHTML = `
-                <span class="site-name">${site.name}</span>
-                <span class="site-date">Deployed: ${date}</span>
+                <span class="site-name">${escapeHtml(title)}</span>
+                <span class="site-subdomain">${escapeHtml(sub)}</span>
+                <span class="site-date">Created: ${date}</span>
             `;
             list.appendChild(div);
         });
     }
 
+    function escapeHtml(text) {
+        return (text || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
     // ==========================================
-    // 6. NETLIFY + CORE LOGIC
+    // 6. NETLIFY + PROPER ERROR HANDLING
     // ==========================================
     async function calculateSHA1(text) {
         const encoder = new TextEncoder();
@@ -491,13 +571,14 @@
     async function handleDeploy() {
         const code = document.getElementById('codeEditor').value.trim();
         const subdomain = document.getElementById('subdomain').value.trim();
+        const displayName = document.getElementById('displayName').value.trim();
         
         if (!code) return showToast('Please enter or drop some HTML code first.', true);
 
         const btn = document.getElementById('btnDeploy');
         btn.disabled = true;
         const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...';
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Deploying...';
 
         try {
             if (currentSiteId) {
@@ -506,22 +587,39 @@
                 await deployToNetlify(site.netlify_site_id, code);
                 
                 // Update Supabase
-                const { error } = await supabaseClient.from('bcm_sites').update({ last_code: code }).eq('id', currentSiteId);
+                const { error } = await supabaseClient.from('bcm_sites').update({
+                    last_code: code,
+                    display_name: displayName
+                }).eq('id', currentSiteId);
+                
                 if (error) throw error;
                 
                 site.last_code = code;
+                site.display_name = displayName;
+                renderSiteList();
                 showToast('Deployment updated successfully!');
             } else {
                 // CREATE NEW SITE
                 const sitePayload = subdomain ? { name: subdomain } : {};
                 
-                // 1. Create site on Netlify
+                // 1. Create site on Netlify with Specific Error Catching
                 const siteRes = await fetch('https://api.netlify.com/api/v1/sites', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(sitePayload)
                 });
-                if (!siteRes.ok) throw new Error(await siteRes.text());
+
+                if (!siteRes.ok) {
+                    const errData = await siteRes.json().catch(() => ({}));
+                    // Netlify 422 error means subdomain/name is taken
+                    if (siteRes.status === 422) {
+                        throw new Error(`Subdomain "${subdomain}" is already taken on Netlify! Please pick another name.`);
+                    } else if (siteRes.status === 401) {
+                        throw new Error(`Unauthorized. Check Netlify Access Token.`);
+                    }
+                    throw new Error(errData.message || 'Failed to create site on Netlify.');
+                }
+
                 const netlifySite = await siteRes.json();
 
                 // 2. Deploy Code
@@ -531,6 +629,7 @@
                 const newRecord = {
                     netlify_site_id: netlifySite.id,
                     name: netlifySite.name,
+                    display_name: displayName || netlifySite.name,
                     url: netlifySite.url,
                     admin_url: netlifySite.admin_url,
                     last_code: code
