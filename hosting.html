@@ -255,15 +255,15 @@
 
 <script>
     // ==========================================
-    // 1. CONFIGURATION (PASTE YOUR KEYS HERE)
+    // 1. CONFIGURATION 
     // ==========================================
     const NETLIFY_TOKEN = 'nfp_3yj2Qosk5HrXH1Hc4aza7eou3cQYfCTcf3af';
     
     const SUPABASE_URL = 'https://qsmuypaapwdrzhfdrepe.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzbXV5cGFhcHdkcnpoZmRyZXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjY3NjMsImV4cCI6MjEwMDgwMjc2M30.GuMdd-1O_BHtQ3sVztYKk9aBiJaPBUsXJif2mHVv8ko';
 
-    // Initialize Supabase Client
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Initialize Supabase Client (Renamed to supabaseClient to prevent variable collision with CDN)
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // App State
     let sites = [];
@@ -424,7 +424,7 @@
     // ==========================================
     async function fetchSites() {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('bcm_sites')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -493,7 +493,7 @@
                 await deployToNetlify(site.netlify_site_id, code);
                 
                 // Update Supabase
-                await supabase.from('bcm_sites').update({ last_code: code }).eq('id', currentSiteId);
+                await supabaseClient.from('bcm_sites').update({ last_code: code }).eq('id', currentSiteId);
                 
                 // Update local state
                 site.last_code = code;
@@ -523,7 +523,7 @@
                     last_code: code
                 };
                 
-                const { data, error } = await supabase.from('bcm_sites').insert([newRecord]).select();
+                const { data, error } = await supabaseClient.from('bcm_sites').insert([newRecord]).select();
                 if (error) throw error;
 
                 // Update UI
@@ -603,7 +603,7 @@
             if (!delRes.ok && delRes.status !== 404) throw new Error('Failed to delete from Netlify.');
 
             // Delete from Supabase
-            const { error } = await supabase.from('bcm_sites').delete().eq('id', currentSiteId);
+            const { error } = await supabaseClient.from('bcm_sites').delete().eq('id', currentSiteId);
             if (error) throw error;
 
             // Update UI
