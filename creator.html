@@ -23,14 +23,14 @@
         body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
         
         /* Sidebar */
-        .sidebar { width: 320px; background: var(--bg-sidebar); padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; border-right: 1px solid var(--border); z-index: 100; overflow-y: auto; box-shadow: var(--shadow-sm); }
+        .sidebar { width: 340px; background: var(--bg-sidebar); padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; border-right: 1px solid var(--border); z-index: 100; overflow-y: auto; box-shadow: var(--shadow-sm); }
         .brand { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; color: #000; }
         .brand i { color: var(--accent); font-size: 1.5rem; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         .input-group label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
         
-        .input-group input, .input-group textarea, .input-group select { 
+        .input-group input[type="text"], .input-group input[type="range"], .input-group textarea { 
             background: #f9f9f9; 
             border: 1px solid var(--border); 
             color: var(--text-main); 
@@ -41,35 +41,74 @@
             outline: none; 
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
         }
-        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { 
+        .input-group input[type="text"]:focus, .input-group textarea:focus { 
             border-color: var(--accent); 
             box-shadow: 0 0 0 3px rgba(0, 85, 255, 0.12); 
             background: #fff; 
         }
         .input-group textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
-        
-        /* PEAK UI: Custom Select Selector */
-        .input-group select { 
-            appearance: none; 
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background-color: #f9f9f9;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23111111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 14px center;
-            background-size: 16px;
-            padding-right: 40px;
-            cursor: pointer;
-            font-weight: 500;
+
+        /* API Key Cards UI */
+        .api-keys-container { display: flex; flex-direction: column; gap: 12px; }
+        .api-card {
+            background: #f9f9f9;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .input-group select:hover {
-            background-color: #f3f3f5;
-            border-color: rgba(0,0,0,0.18);
+        .api-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 85, 255, 0.12);
+            background: #fff;
         }
-        .input-group select option {
-            background: #ffffff;
+        .api-card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .api-card-header i { color: var(--accent); font-size: 0.85rem; }
+        .api-card-row { display: flex; gap: 8px; }
+        .api-card-row input {
+            flex: 1;
+            background: #fff;
+            border: 1px solid var(--border);
             color: var(--text-main);
-            padding: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            outline: none;
+            min-width: 0;
+        }
+        .api-card-row input:focus { border-color: var(--accent); }
+        .btn-copy-key {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-copy-key:hover {
+            border-color: var(--text-main);
+            background: #f0f0f0;
+        }
+        .btn-copy-key.success {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
         }
         
         /* Main Gallery */
@@ -106,15 +145,33 @@
     <aside class="sidebar">
         <div class="brand"><i class="bi bi-hexagon-fill"></i> BCM AI STUDIO</div>
         
-        <!-- Peak UI Profile Selector -->
-        <div class="input-group">
-            <label>API Profile</label>
-            <select id="apiUser">
-                <option value="" disabled selected>Select user profile...</option>
-                <option value="Hardik">Hardik</option>
-                <option value="Faris">Faris</option>
-                <option value="Sammed">Sammed</option>
-            </select>
+        <!-- Peak UI API Keys Cards -->
+        <div class="api-keys-container">
+            <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Team API Keys</label>
+            
+            <div class="api-card">
+                <div class="api-card-header"><i class="bi bi-person-fill"></i> Hardik</div>
+                <div class="api-card-row">
+                    <input type="password" id="key-Hardik" placeholder="API Key">
+                    <button class="btn-copy-key" onclick="copyApiKey('Hardik', this)" title="Copy API Key"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>
+            
+            <div class="api-card">
+                <div class="api-card-header"><i class="bi bi-person-fill"></i> Faris</div>
+                <div class="api-card-row">
+                    <input type="password" id="key-Faris" placeholder="API Key">
+                    <button class="btn-copy-key" onclick="copyApiKey('Faris', this)" title="Copy API Key"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>
+            
+            <div class="api-card">
+                <div class="api-card-header"><i class="bi bi-person-fill"></i> Sammed</div>
+                <div class="api-card-row">
+                    <input type="password" id="key-Sammed" placeholder="API Key">
+                    <button class="btn-copy-key" onclick="copyApiKey('Sammed', this)" title="Copy API Key"><i class="bi bi-copy"></i></button>
+                </div>
+            </div>
         </div>
         
         <div class="input-group">
@@ -147,6 +204,30 @@
             "Sammed": "PASTE_SAMMED_API_KEY_HERE"
         };
         // ======================================================================
+
+        // Populate API key inputs on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('key-Hardik').value = API_KEYS["Hardik"];
+            document.getElementById('key-Faris').value = API_KEYS["Faris"];
+            document.getElementById('key-Sammed').value = API_KEYS["Sammed"];
+        });
+
+        function copyApiKey(user, btnElement) {
+            const keyInput = document.getElementById(`key-${user}`);
+            if (!keyInput.value || keyInput.value.includes("PASTE_")) {
+                alert(`No valid API key found for ${user}.`);
+                return;
+            }
+            navigator.clipboard.writeText(keyInput.value).then(() => {
+                const originalHTML = btnElement.innerHTML;
+                btnElement.innerHTML = `<i class="bi bi-check2"></i>`;
+                btnElement.classList.add('success');
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHTML;
+                    btnElement.classList.remove('success');
+                }, 1500);
+            }).catch(err => alert('Failed to copy API key: ' + err));
+        }
 
         const searchSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>`;
 
@@ -387,11 +468,23 @@
         }
 
         async function analyze(id) {
-            const selectedUser = document.getElementById('apiUser').value;
-            if (!selectedUser) return alert("Please select an API Profile in the sidebar.");
-            
-            const apiKey = API_KEYS[selectedUser];
-            if (!apiKey || apiKey.includes("PASTE_")) return alert(`Please configure the API key for ${selectedUser} inside the script.`);
+            // Find the first valid API key available in the UI cards for live preview
+            let activeApiKey = null;
+            const keys = [
+                document.getElementById('key-Hardik').value,
+                document.getElementById('key-Faris').value,
+                document.getElementById('key-Sammed').value
+            ];
+            for (let k of keys) {
+                if (k && !k.includes("PASTE_")) {
+                    activeApiKey = k;
+                    break;
+                }
+            }
+
+            if (!activeApiKey) {
+                return alert("Please configure at least one API key in the sidebar cards to use the live preview.");
+            }
             
             const img = document.getElementById(`img-${id}`);
             if (!img.dataset.b64) return alert("Please upload or snap an image first.");
@@ -409,7 +502,7 @@
             result.innerText = 'Processing visual data...';
 
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -435,18 +528,6 @@
 
         // ================= SMART DEDICATED COPY ENGINE =================
         function copyCode(index, id) {
-            const selectedUser = document.getElementById('apiUser').value;
-            if (!selectedUser) {
-                alert("Please select an API Profile in the sidebar first!");
-                return;
-            }
-
-            const selectedApiKey = API_KEYS[selectedUser];
-            if (!selectedApiKey || selectedApiKey.includes("PASTE_")) {
-                alert(`The API Key for '${selectedUser}' is not configured yet in the code.`);
-                return;
-            }
-
             const tpl = templates[index];
             const currentModel = document.getElementById('modelName').value || 'gemini-1.5-flash';
             const currentPrompt = document.getElementById('systemPrompt').value || 'Analyze this image with peak professional detail.';
@@ -476,7 +557,7 @@
                 .replace(/\.bottom-bar/g, `#app .bottom-bar`)
                 .replace(/\.glass-panel/g, `#app .glass-panel`);
 
-            // Pure, zero-overhead, direct-key standalone code
+            // Pure, zero-overhead, env-variable standalone code
             const standaloneCode = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -512,8 +593,14 @@
     </div>
 
     <script>
-        // Dedicated Key assigned from ${selectedUser}'s Profile
-        const API_KEY = "${selectedApiKey}";
+        // =================================================================================
+        // REQUIRED ENVIRONMENT VARIABLE: GEMINI_API_KEY
+        // The application expects the Gemini API key to be passed via: process.env.GEMINI_API_KEY
+        // Ensure your build system (Webpack, Vite, Node, etc.) replaces this at build/runtime.
+        // For testing without a bundler, replace process.env.GEMINI_API_KEY with "YOUR_KEY".
+        // =================================================================================
+        const API_KEY = typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : "YOUR_API_KEY_HERE";
+        
         const MODEL = "${currentModel}";
         const TEMPERATURE = ${currentTemp};
         const SYSTEM_PROMPT = \`${currentPrompt.replace(/`/g, '\\`').replace(/\${/g, '\\${')}\`;
@@ -571,7 +658,9 @@
         }
         
         async function analyze() {
-            if(!API_KEY || API_KEY.includes("PASTE_")) return alert("API Key is missing or unconfigured.");
+            if(!API_KEY || API_KEY === "YOUR_API_KEY_HERE" || API_KEY.includes("PASTE_")) {
+                return alert("API Key is missing. Please configure GEMINI_API_KEY in your environment.");
+            }
             const img = document.getElementById('img-app');
             if(!img.dataset.b64) return alert("Please upload or snap an image first.");
             
@@ -611,7 +700,7 @@
             navigator.clipboard.writeText(standaloneCode).then(() => {
                 const btn = document.querySelectorAll('.btn-copy')[index];
                 const originalHTML = btn.innerHTML;
-                btn.innerHTML = `<i class="bi bi-check2"></i> Copied (${selectedUser})`;
+                btn.innerHTML = `<i class="bi bi-check2"></i> Copied Code`;
                 btn.style.borderColor = '#0055ff';
                 btn.style.color = '#0055ff';
                 setTimeout(() => {
