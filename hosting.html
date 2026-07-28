@@ -4,16 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCM AI STUDIO</title>
+    
+    <!-- Fix for the favicon 404 error -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Phosphor Icons for premium UI -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <style>
         :root {
             --bg-dark: #0f111a;
             --bg-panel: #1a1d27;
             --bg-hover: #252936;
-            --primary: #6366f1; /* Indigo */
+            --primary: #6366f1;
             --primary-hover: #4f46e5;
             --danger: #ef4444;
             --text-main: #f8fafc;
@@ -42,6 +47,7 @@
             display: flex;
             flex-direction: column;
             transition: transform 0.3s ease;
+            z-index: 10;
         }
 
         .main-content {
@@ -193,7 +199,7 @@
             flex: 1;
             width: 100%;
             background: transparent;
-            color: #a5b4fc; /* Code-like color */
+            color: #a5b4fc;
             border: none;
             padding: 20px;
             font-family: 'Fira Code', 'Courier New', Courier, monospace;
@@ -238,7 +244,7 @@
             gap: 12px;
             transform: translateY(150%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 100;
+            z-index: 9999;
         }
         #statusToast.show { transform: translateY(0); }
 
@@ -253,35 +259,17 @@
 </head>
 <body>
 
-<script>
-    // ==========================================
-    // 1. CONFIGURATION 
-    // ==========================================
-    const NETLIFY_TOKEN = 'nfp_3yj2Qosk5HrXH1Hc4aza7eou3cQYfCTcf3af';
-    
-    const SUPABASE_URL = 'https://qsmuypaapwdrzhfdrepe.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzbXV5cGFhcHdkcnpoZmRyZXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjY3NjMsImV4cCI6MjEwMDgwMjc2M30.GuMdd-1O_BHtQ3sVztYKk9aBiJaPBUsXJif2mHVv8ko';
-
-    // Initialize Supabase Client (Renamed to supabaseClient to prevent variable collision with CDN)
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // App State
-    let sites = [];
-    let currentSiteId = null; // null means creating a new site, UUID means editing existing
-</script>
-
 <!-- UI Layout -->
 <div class="sidebar">
     <div class="brand">
         <i class="ph-fill ph-code"></i> BCM AI STUDIO
     </div>
     <div class="new-btn-container">
-        <button class="btn" onclick="startNewSite()">
+        <button class="btn" id="btnNewProject">
             <i class="ph ph-plus"></i> Create New Project
         </button>
     </div>
     <div class="site-list" id="siteList">
-        <!-- Loaded from Supabase -->
         <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 14px;">Loading projects...</div>
     </div>
 </div>
@@ -290,13 +278,13 @@
     <div class="header">
         <h2 id="editorTitle">New Project</h2>
         <div class="header-actions" id="headerActions" style="display: none;">
-            <button class="btn btn-outline" onclick="openLiveSite()" title="View Live Site">
+            <button class="btn btn-outline" id="btnLive" title="View Live Site">
                 <i class="ph ph-arrow-square-out"></i> Live
             </button>
-            <button class="btn btn-outline" onclick="downloadCode()" title="Download HTML">
+            <button class="btn btn-outline" id="btnDownload" title="Download HTML">
                 <i class="ph ph-download-simple"></i> Download
             </button>
-            <button class="btn btn-danger" onclick="deleteCurrentSite()" title="Delete Project">
+            <button class="btn btn-danger" id="btnDelete" title="Delete Project">
                 <i class="ph ph-trash"></i> Delete
             </button>
         </div>
@@ -323,7 +311,7 @@
             <textarea id="codeEditor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello BCM AI STUDIO</h1>&#10;</body>&#10;</html>"></textarea>
         </div>
 
-        <button class="btn" id="deployBtn" onclick="handleDeploy()" style="padding: 16px; font-size: 16px;">
+        <button class="btn" id="btnDeploy" style="padding: 16px; font-size: 16px;">
             <i class="ph ph-rocket-launch"></i> <span id="deployBtnText">Deploy to Netlify</span>
         </button>
     </div>
@@ -337,15 +325,41 @@
 
 <script>
     // ==========================================
-    // 2. UI & STATE MANAGEMENT
+    // 1. CONFIGURATION 
     // ==========================================
+    const NETLIFY_TOKEN = 'nfp_3yj2Qosk5HrXH1Hc4aza7eou3cQYfCTcf3af';
+    const SUPABASE_URL = 'https://qsmuypaapwdrzhfdrepe.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzbXV5cGFhcHdkcnpoZmRyZXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjY3NjMsImV4cCI6MjEwMDgwMjc2M30.GuMdd-1O_BHtQ3sVztYKk9aBiJaPBUsXJif2mHVv8ko';
 
+    // Initialize Supabase Client
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // App State
+    let sites = [];
+    let currentSiteId = null;
+
+    // ==========================================
+    // 2. EVENT LISTENERS (Fixed for strict environments)
+    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
+        console.log("App Initialized");
+        
+        // Bind Buttons
+        document.getElementById('btnNewProject').addEventListener('click', startNewSite);
+        document.getElementById('btnDeploy').addEventListener('click', handleDeploy);
+        document.getElementById('btnLive').addEventListener('click', openLiveSite);
+        document.getElementById('btnDownload').addEventListener('click', downloadCode);
+        document.getElementById('btnDelete').addEventListener('click', deleteCurrentSite);
+
         setupDragAndDrop();
         fetchSites();
     });
 
+    // ==========================================
+    // 3. UI & STATE MANAGEMENT
+    // ==========================================
     function showToast(msg, isError = false) {
+        console.log("Toast:", msg);
         const toast = document.getElementById('statusToast');
         const icon = document.getElementById('toastIcon');
         document.getElementById('toastMsg').innerText = msg;
@@ -366,7 +380,7 @@
         document.getElementById('codeEditor').value = '';
         document.getElementById('deployBtnText').innerText = 'Deploy to Netlify';
         document.getElementById('headerActions').style.display = 'none';
-        renderSiteList(); // removes active class
+        renderSiteList();
     }
 
     function selectSite(id) {
@@ -376,7 +390,7 @@
         currentSiteId = id;
         document.getElementById('editorTitle').innerText = 'Editing: ' + site.name;
         document.getElementById('subdomain').value = site.name;
-        document.getElementById('subdomain').disabled = true; // Can't change name after creation easily here
+        document.getElementById('subdomain').disabled = true;
         document.getElementById('codeEditor').value = site.last_code;
         document.getElementById('deployBtnText').innerText = 'Update Deployment';
         document.getElementById('headerActions').style.display = 'flex';
@@ -384,7 +398,7 @@
     }
 
     // ==========================================
-    // 3. DRAG AND DROP LOGIC
+    // 4. DRAG AND DROP LOGIC
     // ==========================================
     function setupDragAndDrop() {
         const dropZone = document.getElementById('dropZone');
@@ -410,8 +424,8 @@
             if (files.length > 0) {
                 const file = files[0];
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    editor.value = e.target.result;
+                reader.onload = (ev) => {
+                    editor.value = ev.target.result;
                     showToast('File loaded successfully!');
                 };
                 reader.readAsText(file);
@@ -420,7 +434,7 @@
     }
 
     // ==========================================
-    // 4. SUPABASE DATABASE OPERATIONS
+    // 5. SUPABASE DATABASE OPERATIONS
     // ==========================================
     async function fetchSites() {
         try {
@@ -430,11 +444,11 @@
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
-            sites = data;
+            sites = data || [];
             renderSiteList();
         } catch (err) {
-            console.error(err);
-            showToast('Failed to load projects from Supabase.', true);
+            console.error("Supabase Error:", err);
+            showToast('Failed to load projects from Database.', true);
         }
     }
 
@@ -450,7 +464,9 @@
         sites.forEach(site => {
             const div = document.createElement('div');
             div.className = `site-item ${site.id === currentSiteId ? 'active' : ''}`;
-            div.onclick = () => selectSite(site.id);
+            
+            // Add event listener securely
+            div.addEventListener('click', () => selectSite(site.id));
             
             const date = new Date(site.created_at).toLocaleDateString();
             div.innerHTML = `
@@ -462,10 +478,8 @@
     }
 
     // ==========================================
-    // 5. NETLIFY + CORE LOGIC
+    // 6. NETLIFY + CORE LOGIC
     // ==========================================
-    
-    // SHA-1 for Netlify Digest
     async function calculateSHA1(text) {
         const encoder = new TextEncoder();
         const data = encoder.encode(text);
@@ -479,9 +493,8 @@
         const subdomain = document.getElementById('subdomain').value.trim();
         
         if (!code) return showToast('Please enter or drop some HTML code first.', true);
-        if (!NETLIFY_TOKEN.startsWith('nfp_')) return showToast('Please configure your Netlify Token in the code.', true);
 
-        const btn = document.getElementById('deployBtn');
+        const btn = document.getElementById('btnDeploy');
         btn.disabled = true;
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Processing...';
@@ -493,9 +506,9 @@
                 await deployToNetlify(site.netlify_site_id, code);
                 
                 // Update Supabase
-                await supabaseClient.from('bcm_sites').update({ last_code: code }).eq('id', currentSiteId);
+                const { error } = await supabaseClient.from('bcm_sites').update({ last_code: code }).eq('id', currentSiteId);
+                if (error) throw error;
                 
-                // Update local state
                 site.last_code = code;
                 showToast('Deployment updated successfully!');
             } else {
@@ -526,13 +539,12 @@
                 const { data, error } = await supabaseClient.from('bcm_sites').insert([newRecord]).select();
                 if (error) throw error;
 
-                // Update UI
                 sites.unshift(data[0]);
                 selectSite(data[0].id);
                 showToast('New site created and deployed!');
             }
         } catch (err) {
-            console.error(err);
+            console.error("Deploy Error:", err);
             showToast(err.message || 'Deployment failed.', true);
         } finally {
             btn.disabled = false;
@@ -565,9 +577,8 @@
     }
 
     // ==========================================
-    // 6. HELPER ACTIONS (Download, Delete, Live)
+    // 7. HELPER ACTIONS
     // ==========================================
-    
     function openLiveSite() {
         const site = sites.find(s => s.id === currentSiteId);
         if(site) window.open(site.url, '_blank');
@@ -612,7 +623,7 @@
             showToast('Project deleted successfully.');
 
         } catch (err) {
-            console.error(err);
+            console.error("Delete Error:", err);
             showToast('Failed to delete project.', true);
         }
     }
