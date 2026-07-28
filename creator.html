@@ -176,7 +176,7 @@
         
         <div class="input-group">
             <label>Model Name</label>
-            <input type="text" id="modelName" value="gemini-1.5-flash" placeholder="e.g. gemini-1.5-pro">
+            <input type="text" id="modelName" value="gemini-3.5-flash-lie" placeholder="e.g. gemini-1.5-pro">
         </div>
         
         <div class="input-group">
@@ -529,7 +529,7 @@
         // ================= SMART DEDICATED COPY ENGINE =================
         function copyCode(index, id) {
             const tpl = templates[index];
-            const currentModel = document.getElementById('modelName').value || 'gemini-1.5-flash';
+            const currentModel = document.getElementById('modelName').value || 'gemini-3.5-flash-lie';
             const currentPrompt = document.getElementById('systemPrompt').value || 'Analyze this image with peak professional detail.';
             const currentTemp = document.getElementById('temperature').value || '0.7';
 
