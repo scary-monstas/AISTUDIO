@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCM AI STUDIO</title>
     
-    <!-- Fix for favicon 404 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Phosphor Icons -->
+    <!-- Phosphor Icons for premium UI -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
@@ -25,7 +24,6 @@
             --text-muted: #94a3b8;
             --border: #334155;
             --accent: #0ea5e9;
-            --success: #10b981;
         }
 
         * { box-sizing: border-box; }
@@ -113,15 +111,18 @@
             cursor: pointer;
             border: 1px solid transparent;
             transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
         .site-item:hover { background-color: var(--bg-hover); }
         .site-item.active {
             background-color: rgba(99, 102, 241, 0.1);
             border-color: var(--primary);
         }
-        .site-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; display: block; color: var(--text-main); }
-        .site-subdomain { font-size: 12px; color: var(--accent); display: block; margin-bottom: 4px; }
-        .site-date { font-size: 11px; color: var(--text-muted); }
+        .site-name { font-weight: 600; font-size: 15px; display: block; word-break: break-all; }
+        .site-sub { font-size: 11px; color: var(--accent); }
+        .site-date { font-size: 12px; color: var(--text-muted); }
 
         /* Main Editor Area */
         .header {
@@ -145,26 +146,20 @@
             width: 100%;
         }
 
-        .inputs-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         label { font-weight: 500; font-size: 14px; color: var(--text-muted); }
         
-        .styled-input {
+        input[type="text"].standard-input {
             background: var(--bg-panel);
             border: 1px solid var(--border);
-            border-radius: 8px;
             color: white;
             padding: 14px;
-            font-size: 15px;
+            border-radius: 8px;
+            font-size: 16px;
             outline: none;
             transition: border-color 0.2s;
         }
-        .styled-input:focus { border-color: var(--primary); }
+        input[type="text"].standard-input:focus { border-color: var(--primary); }
 
         .subdomain-wrapper {
             display: flex;
@@ -176,13 +171,14 @@
             transition: border-color 0.2s;
         }
         .subdomain-wrapper:focus-within { border-color: var(--primary); }
-        .subdomain-wrapper input {
+        
+        .subdomain-wrapper input[type="text"] {
             background: transparent;
             border: none;
             color: white;
             padding: 14px;
             flex: 1;
-            font-size: 15px;
+            font-size: 16px;
             outline: none;
         }
         .domain-suffix {
@@ -203,7 +199,6 @@
             border-radius: 8px;
             overflow: hidden;
             background: var(--bg-panel);
-            min-height: 300px;
         }
         .code-header {
             padding: 12px 16px;
@@ -214,13 +209,6 @@
             align-items: center;
             font-size: 13px;
             color: var(--text-muted);
-        }
-        #autoSaveStatus {
-            font-size: 12px;
-            color: var(--success);
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
         textarea {
             flex: 1;
@@ -272,7 +260,8 @@
             transform: translateY(150%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 9999;
-            max-width: 450px;
+            max-width: 400px;
+            line-height: 1.4;
         }
         #statusToast.show { transform: translateY(0); }
 
@@ -282,7 +271,6 @@
             .sidebar { width: 100%; height: 250px; border-right: none; border-bottom: 1px solid var(--border); }
             .header { padding: 15px 20px; flex-direction: column; align-items: flex-start; gap: 15px; }
             .editor-container { padding: 20px; }
-            .inputs-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -320,16 +308,16 @@
     </div>
 
     <div class="editor-container">
-        <div class="inputs-grid">
-            <div class="input-group">
-                <label for="displayName">Project Name (Shown in Sidebar for Team)</label>
-                <input type="text" id="displayName" class="styled-input" placeholder="e.g. Client Landing Page - John" autocomplete="off">
+        <div style="display: flex; gap: 20px;">
+            <div class="input-group" style="flex: 1;">
+                <label for="projectName">Project Name (Team Reference)</label>
+                <input type="text" id="projectName" class="standard-input" placeholder="e.g. Client Landing Page" autocomplete="off">
             </div>
 
-            <div class="input-group">
-                <label for="subdomain">Netlify Subdomain URL</label>
+            <div class="input-group" style="flex: 1;">
+                <label for="subdomain">Netlify Subdomain</label>
                 <div class="subdomain-wrapper">
-                    <input type="text" id="subdomain" placeholder="my-awesome-app" autocomplete="off">
+                    <input type="text" id="subdomain" placeholder="my-awesome-ai-app" autocomplete="off">
                     <div class="domain-suffix">.netlify.app</div>
                 </div>
             </div>
@@ -342,20 +330,20 @@
             </div>
             <div class="code-header">
                 <span><i class="ph ph-file-code"></i> index.html</span>
-                <span id="autoSaveStatus"></span>
+                <span id="saveStatus" style="display: none; align-items: center; gap: 4px; font-weight: 500;"></span>
             </div>
             <textarea id="codeEditor" placeholder="<!DOCTYPE html>&#10;<html>&#10;<body>&#10;  <h1>Hello BCM AI STUDIO</h1>&#10;</body>&#10;</html>"></textarea>
         </div>
 
         <button class="btn" id="btnDeploy" style="padding: 16px; font-size: 16px;">
-            <i class="ph ph-rocket-launch"></i> <span id="deployBtnText">Deploy to Netlify</span>
+            <i class="ph ph-rocket-launch" id="deployBtnIcon"></i> <span id="deployBtnText">Deploy to Netlify</span>
         </button>
     </div>
 </div>
 
 <!-- Toast Notification -->
 <div id="statusToast">
-    <i class="ph ph-info" id="toastIcon" style="font-size: 24px;"></i>
+    <i class="ph ph-info" id="toastIcon" style="font-size: 24px; flex-shrink: 0;"></i>
     <span id="toastMsg">Action successful!</span>
 </div>
 
@@ -367,65 +355,28 @@
     const SUPABASE_URL = 'https://qsmuypaapwdrzhfdrepe.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzbXV5cGFhcHdkcnpoZmRyZXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjY3NjMsImV4cCI6MjEwMDgwMjc2M30.GuMdd-1O_BHtQ3sVztYKk9aBiJaPBUsXJif2mHVv8ko';
 
-    // Initialize Supabase Client
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // App State
     let sites = [];
     let currentSiteId = null;
     let autoSaveTimer = null;
 
     // ==========================================
-    // 2. EVENT LISTENERS & AUTO-SAVE
+    // 2. EVENT LISTENERS
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
-        // Bind Buttons
         document.getElementById('btnNewProject').addEventListener('click', startNewSite);
         document.getElementById('btnDeploy').addEventListener('click', handleDeploy);
         document.getElementById('btnLive').addEventListener('click', openLiveSite);
         document.getElementById('btnDownload').addEventListener('click', downloadCode);
         document.getElementById('btnDelete').addEventListener('click', deleteCurrentSite);
 
-        // Auto-save listeners
-        document.getElementById('codeEditor').addEventListener('input', triggerAutoSave);
-        document.getElementById('displayName').addEventListener('input', triggerAutoSave);
+        // Auto-save listener
+        document.getElementById('codeEditor').addEventListener('input', handleAutoSave);
 
         setupDragAndDrop();
         fetchSites();
     });
-
-    function triggerAutoSave() {
-        const statusSpan = document.getElementById('autoSaveStatus');
-        statusSpan.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Auto-saving...';
-        
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(async () => {
-            const code = document.getElementById('codeEditor').value;
-            const displayName = document.getElementById('displayName').value.trim();
-
-            if (currentSiteId) {
-                // Auto-save existing project to Supabase
-                const { error } = await supabaseClient
-                    .from('bcm_sites')
-                    .update({ last_code: code, display_name: displayName })
-                    .eq('id', currentSiteId);
-
-                if (!error) {
-                    const site = sites.find(s => s.id === currentSiteId);
-                    if (site) {
-                        site.last_code = code;
-                        site.display_name = displayName;
-                        renderSiteList();
-                    }
-                    statusSpan.innerHTML = '<i class="ph ph-check-circle"></i> Auto-saved to Database';
-                } else {
-                    statusSpan.innerHTML = '<span style="color:var(--danger)">Auto-save failed</span>';
-                }
-            } else {
-                statusSpan.innerHTML = '<i class="ph ph-cloud-slash"></i> Local Draft';
-            }
-        }, 1000); // 1 sec debounce
-    }
 
     // ==========================================
     // 3. UI & STATE MANAGEMENT
@@ -440,19 +391,20 @@
         icon.style.color = isError ? 'var(--danger)' : 'var(--primary)';
         
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 5000);
+        setTimeout(() => toast.classList.remove('show'), 4000);
     }
 
     function startNewSite() {
         currentSiteId = null;
         document.getElementById('editorTitle').innerText = 'New Project';
-        document.getElementById('displayName').value = '';
+        document.getElementById('projectName').value = '';
+        document.getElementById('projectName').disabled = false;
         document.getElementById('subdomain').value = '';
         document.getElementById('subdomain').disabled = false;
         document.getElementById('codeEditor').value = '';
-        document.getElementById('autoSaveStatus').innerHTML = '';
         document.getElementById('deployBtnText').innerText = 'Deploy to Netlify';
         document.getElementById('headerActions').style.display = 'none';
+        document.getElementById('saveStatus').style.display = 'none';
         renderSiteList();
     }
 
@@ -461,27 +413,93 @@
         if(!site) return;
 
         currentSiteId = id;
-        document.getElementById('editorTitle').innerText = site.display_name || site.name;
-        document.getElementById('displayName').value = site.display_name || '';
-        document.getElementById('subdomain').value = site.name;
-        document.getElementById('subdomain').disabled = true; // Can't change subdomain after creation
+        document.getElementById('editorTitle').innerText = 'Editing: ' + site.name;
+        document.getElementById('projectName').value = site.name;
+        document.getElementById('projectName').disabled = false; // Allow renaming project locally
+        
+        // Extract subdomain from URL
+        let sub = '';
+        if (site.url) {
+            try {
+                const urlObj = new URL(site.url);
+                sub = urlObj.hostname.split('.')[0];
+            } catch(e) {}
+        }
+        document.getElementById('subdomain').value = sub;
+        document.getElementById('subdomain').disabled = true; // Netlify subdomain can't be changed here easily
+        
         document.getElementById('codeEditor').value = site.last_code;
-        document.getElementById('autoSaveStatus').innerHTML = '<i class="ph ph-check-circle"></i> Saved';
-        document.getElementById('deployBtnText').innerText = 'Update Live Deployment';
+        
+        // Safely update button text
+        const btnTextSpan = document.getElementById('deployBtnText');
+        if (btnTextSpan) btnTextSpan.innerText = 'Update Deployment';
+        
         document.getElementById('headerActions').style.display = 'flex';
+        document.getElementById('saveStatus').style.display = 'none';
         renderSiteList();
     }
 
     // ==========================================
-    // 4. DRAG AND DROP LOGIC
+    // 4. AUTO-SAVE LOGIC
+    // ==========================================
+    function handleAutoSave() {
+        if (!currentSiteId) return; // Only auto-save if project already exists
+
+        const status = document.getElementById('saveStatus');
+        status.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
+        status.style.color = 'var(--text-muted)';
+        status.style.display = 'inline-flex';
+
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(async () => {
+            const code = document.getElementById('codeEditor').value;
+            const projName = document.getElementById('projectName').value.trim();
+
+            try {
+                // Update Supabase Database
+                const { error } = await supabaseClient
+                    .from('bcm_sites')
+                    .update({ 
+                        last_code: code,
+                        name: projName || "Unnamed Project" 
+                    })
+                    .eq('id', currentSiteId);
+                
+                if (error) throw error;
+
+                // Update local state so UI doesn't lag
+                const site = sites.find(s => s.id === currentSiteId);
+                if(site) {
+                    site.last_code = code;
+                    if(projName) site.name = projName;
+                }
+                
+                // Render sidebar in case name changed
+                renderSiteList();
+
+                status.innerHTML = '<i class="ph ph-check"></i> Saved';
+                status.style.color = 'var(--primary)';
+                setTimeout(() => status.style.display = 'none', 2000);
+            } catch (err) {
+                console.error("Auto-save Error:", err);
+                status.innerHTML = '<i class="ph ph-warning-circle"></i> Failed to save';
+                status.style.color = 'var(--danger)';
+            }
+        }, 1000); // 1-second debounce
+    }
+
+    // ==========================================
+    // 5. DRAG AND DROP LOGIC
     // ==========================================
     function setupDragAndDrop() {
         const dropZone = document.getElementById('dropZone');
         const editor = document.getElementById('codeEditor');
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+            dropZone.addEventListener(eventName, preventDefaults, false);
         });
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
@@ -499,8 +517,8 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     editor.value = ev.target.result;
-                    triggerAutoSave();
                     showToast('File loaded successfully!');
+                    handleAutoSave(); // Trigger auto-save if applicable
                 };
                 reader.readAsText(file);
             }
@@ -508,7 +526,7 @@
     }
 
     // ==========================================
-    // 5. SUPABASE DATABASE OPERATIONS
+    // 6. SUPABASE DATABASE OPERATIONS
     // ==========================================
     async function fetchSites() {
         try {
@@ -538,27 +556,28 @@
         sites.forEach(site => {
             const div = document.createElement('div');
             div.className = `site-item ${site.id === currentSiteId ? 'active' : ''}`;
+            
             div.addEventListener('click', () => selectSite(site.id));
             
-            const title = site.display_name || site.name;
-            const sub = `${site.name}.netlify.app`;
             const date = new Date(site.created_at).toLocaleDateString();
             
+            // Extract sub for display
+            let subDisplay = 'Unknown URL';
+            if (site.url) {
+                try { subDisplay = new URL(site.url).hostname; } catch(e){}
+            }
+
             div.innerHTML = `
-                <span class="site-name">${escapeHtml(title)}</span>
-                <span class="site-subdomain">${escapeHtml(sub)}</span>
-                <span class="site-date">Created: ${date}</span>
+                <span class="site-name">${site.name}</span>
+                <span class="site-sub"><i class="ph ph-link"></i> ${subDisplay}</span>
+                <span class="site-date">Deployed: ${date}</span>
             `;
             list.appendChild(div);
         });
     }
 
-    function escapeHtml(text) {
-        return (text || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
     // ==========================================
-    // 6. NETLIFY + PROPER ERROR HANDLING
+    // 7. NETLIFY + CORE LOGIC
     // ==========================================
     async function calculateSHA1(text) {
         const encoder = new TextEncoder();
@@ -571,14 +590,20 @@
     async function handleDeploy() {
         const code = document.getElementById('codeEditor').value.trim();
         const subdomain = document.getElementById('subdomain').value.trim();
-        const displayName = document.getElementById('displayName').value.trim();
+        const projectName = document.getElementById('projectName').value.trim();
         
         if (!code) return showToast('Please enter or drop some HTML code first.', true);
 
         const btn = document.getElementById('btnDeploy');
+        const btnIcon = document.getElementById('deployBtnIcon');
+        const btnTextSpan = document.getElementById('deployBtnText');
+        
         btn.disabled = true;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Deploying...';
+        const originalIcon = btnIcon.className;
+        const originalText = btnTextSpan.innerText;
+        
+        btnIcon.className = 'ph ph-spinner ph-spin';
+        btnTextSpan.innerText = 'Processing...';
 
         try {
             if (currentSiteId) {
@@ -587,49 +612,49 @@
                 await deployToNetlify(site.netlify_site_id, code);
                 
                 // Update Supabase
-                const { error } = await supabaseClient.from('bcm_sites').update({
-                    last_code: code,
-                    display_name: displayName
-                }).eq('id', currentSiteId);
-                
+                const finalName = projectName || site.name;
+                const { error } = await supabaseClient
+                    .from('bcm_sites')
+                    .update({ last_code: code, name: finalName })
+                    .eq('id', currentSiteId);
                 if (error) throw error;
                 
                 site.last_code = code;
-                site.display_name = displayName;
+                site.name = finalName;
                 renderSiteList();
+                document.getElementById('editorTitle').innerText = 'Editing: ' + site.name;
                 showToast('Deployment updated successfully!');
             } else {
                 // CREATE NEW SITE
                 const sitePayload = subdomain ? { name: subdomain } : {};
                 
-                // 1. Create site on Netlify with Specific Error Catching
                 const siteRes = await fetch('https://api.netlify.com/api/v1/sites', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(sitePayload)
                 });
-
+                
+                // Handle Netlify API Errors (e.g. Subdomain taken)
                 if (!siteRes.ok) {
                     const errData = await siteRes.json().catch(() => ({}));
-                    // Netlify 422 error means subdomain/name is taken
-                    if (siteRes.status === 422) {
-                        throw new Error(`Subdomain "${subdomain}" is already taken on Netlify! Please pick another name.`);
-                    } else if (siteRes.status === 401) {
-                        throw new Error(`Unauthorized. Check Netlify Access Token.`);
+                    let errMsg = 'Failed to create site.';
+                    if (errData.errors && errData.errors.name && errData.errors.name.includes('is already taken')) {
+                        errMsg = 'Subdomain is already taken! Please choose another one.';
+                    } else if (errData.message) {
+                        errMsg = errData.message;
                     }
-                    throw new Error(errData.message || 'Failed to create site on Netlify.');
+                    throw new Error(errMsg);
                 }
-
+                
                 const netlifySite = await siteRes.json();
 
-                // 2. Deploy Code
+                // Deploy Code
                 await deployToNetlify(netlifySite.id, code);
 
-                // 3. Save to Supabase
+                // Save to Supabase (Use Project Name if provided, else fallback to Netlify generated name)
                 const newRecord = {
                     netlify_site_id: netlifySite.id,
-                    name: netlifySite.name,
-                    display_name: displayName || netlifySite.name,
+                    name: projectName || netlifySite.name,
                     url: netlifySite.url,
                     admin_url: netlifySite.admin_url,
                     last_code: code
@@ -639,6 +664,11 @@
                 if (error) throw error;
 
                 sites.unshift(data[0]);
+                
+                // Restore button text BEFORE calling selectSite to prevent errors
+                btnIcon.className = originalIcon;
+                btnTextSpan.innerText = originalText;
+                
                 selectSite(data[0].id);
                 showToast('New site created and deployed!');
             }
@@ -647,7 +677,11 @@
             showToast(err.message || 'Deployment failed.', true);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = originalText;
+            // Only restore if it wasn't already restored by the success block
+            if(btnTextSpan.innerText === 'Processing...') {
+                btnIcon.className = originalIcon;
+                btnTextSpan.innerText = originalText;
+            }
         }
     }
 
@@ -655,7 +689,6 @@
         const fileSha = await calculateSHA1(code);
         const filesDigest = { '/index.html': fileSha };
 
-        // Create Deploy
         const deployRes = await fetch(`https://api.netlify.com/api/v1/sites/${netlifySiteId}/deploys`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}`, 'Content-Type': 'application/json' },
@@ -664,7 +697,6 @@
         if (!deployRes.ok) throw new Error('Failed to create deploy digest.');
         const deploy = await deployRes.json();
 
-        // Upload File if required
         if (deploy.required && deploy.required.includes(fileSha)) {
             const uploadRes = await fetch(`https://api.netlify.com/api/v1/deploys/${deploy.id}/files/index.html`, {
                 method: 'PUT',
@@ -676,7 +708,7 @@
     }
 
     // ==========================================
-    // 7. HELPER ACTIONS
+    // 8. HELPER ACTIONS
     // ==========================================
     function openLiveSite() {
         const site = sites.find(s => s.id === currentSiteId);
@@ -705,18 +737,15 @@
         if(!site) return;
 
         try {
-            // Delete from Netlify
             const delRes = await fetch(`https://api.netlify.com/api/v1/sites/${site.netlify_site_id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${NETLIFY_TOKEN}` }
             });
             if (!delRes.ok && delRes.status !== 404) throw new Error('Failed to delete from Netlify.');
 
-            // Delete from Supabase
             const { error } = await supabaseClient.from('bcm_sites').delete().eq('id', currentSiteId);
             if (error) throw error;
 
-            // Update UI
             sites = sites.filter(s => s.id !== currentSiteId);
             startNewSite();
             showToast('Project deleted successfully.');
