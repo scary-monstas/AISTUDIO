@@ -27,9 +27,22 @@
         
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         .input-group label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
-        .input-group input, .input-group textarea { background: #f9f9f9; border: 1px solid var(--border); color: var(--text-main); padding: 12px 16px; border-radius: 8px; font-family: inherit; font-size: 0.9rem; outline: none; transition: 0.2s; }
-        .input-group input:focus, .input-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 85, 255, 0.15); background: #fff; }
+        
+        /* Updated to include select styling */
+        .input-group input, .input-group textarea, .input-group select { background: #f9f9f9; border: 1px solid var(--border); color: var(--text-main); padding: 12px 16px; border-radius: 8px; font-family: inherit; font-size: 0.9rem; outline: none; transition: 0.2s; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 85, 255, 0.15); background: #fff; }
         .input-group textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+        
+        /* Custom Select Dropdown Arrow */
+        .input-group select { 
+            appearance: none; 
+            -webkit-appearance: none;
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23666" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
         
         /* Main Gallery */
         .main-content { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }
@@ -57,14 +70,20 @@
     <aside class="sidebar">
         <div class="brand"><i class="bi bi-hexagon-fill"></i> BCM AI STUDIO</div>
         
+        <!-- UPDATED: User Selector -->
         <div class="input-group">
-            <label>API Key</label>
-            <input type="password" id="apiKey" placeholder="AIzaSy...">
+            <label>Select User</label>
+            <select id="apiUser">
+                <option value="" disabled selected>Choose profile...</option>
+                <option value="Hardik">Hardik</option>
+                <option value="Faris">Faris</option>
+                <option value="Sammed">Sammed</option>
+            </select>
         </div>
         
         <div class="input-group">
             <label>Model Name</label>
-            <input type="text" id="modelName" value="gemini-3.5-flash" placeholder="e.g. gemini-1.5-pro">
+            <input type="text" id="modelName" value="gemini-1.5-flash" placeholder="e.g. gemini-1.5-pro">
         </div>
         
         <div class="input-group">
@@ -85,6 +104,14 @@
     </main>
 
     <script>
+        // ================= CONFIGURATION: PASTE API KEYS HERE =================
+        const API_KEYS = {
+            "Hardik": "AQ.Ab8RN6INX1QFN1UgMHj29QgVueHpfOJED82mAvG9m5DemqImxw",
+            "Faris": "AQ.Ab8RN6InHI1e4ozJESlsuhkLjyoimiJtIgLEIwTiMn2RPu7Oog",
+            "Sammed": "PASTE_SAMMED_API_KEY_HERE"
+        };
+        // ======================================================================
+
         // The requested SVG Search Icon for all Primary "Analyze" buttons
         const searchSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>`;
 
@@ -264,10 +291,7 @@
         async function toggleCam(id) {
             const video = document.getElementById(`video-${id}`);
             
-            // Shut off if clicking active camera
             if (activeWidgetId === id && video.style.display === 'block') return stopCam(id);
-
-            // Shut off other active cameras globally
             if (activeWidgetId && activeWidgetId !== id) stopCam(activeWidgetId);
 
             try {
@@ -328,8 +352,12 @@
         }
 
         async function analyze(id) {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            if (!apiKey) return alert("Please enter your Gemini API Key in the sidebar.");
+            // Retrieve selected user API KEY
+            const selectedUser = document.getElementById('apiUser').value;
+            if (!selectedUser) return alert("Please select a user profile in the sidebar.");
+            
+            const apiKey = API_KEYS[selectedUser];
+            if (!apiKey || apiKey.includes("PASTE_")) return alert(`Please configure the API key for ${selectedUser} in the script code.`);
             
             const img = document.getElementById(`img-${id}`);
             if (!img.dataset.b64) return alert("Please upload or snap an image first.");
@@ -376,7 +404,7 @@
         function copyCode(index, id) {
             const tpl = templates[index];
             
-            const currentModel = document.getElementById('modelName').value || 'gemini-3.5-flash';
+            const currentModel = document.getElementById('modelName').value || 'gemini-1.5-flash';
             const currentPrompt = document.getElementById('systemPrompt').value || 'Describe this image.';
             
             const cleanHTML = tpl.html.replace(/\{id\}/g, 'app');
@@ -414,7 +442,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: #f0f0f3; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
         .config-bar { background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 24px; width: 100%; max-width: 450px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .config-bar input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 6px; font-family: inherit; }
+        
+        .config-bar select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 6px; font-family: inherit; appearance: none; -webkit-appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg fill="%23666" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 10px center; cursor: pointer; transition: 0.2s; outline: none; }
+        .config-bar select:focus { border-color: #0055ff; box-shadow: 0 0 0 3px rgba(0, 85, 255, 0.15); }
+        
         .loader { display: none; width: 14px; height: 14px; border: 2px solid rgba(150,150,150,0.4); border-top-color: currentColor; border-radius: 50%; animation: spin 1s infinite linear; margin-left: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
@@ -424,8 +455,13 @@
 </head>
 <body>
     <div class="config-bar">
-        <label style="font-size:0.8rem; font-weight:600; color:#666;">Gemini API Key</label>
-        <input type="password" id="apiKey" placeholder="Enter API Key...">
+        <label style="font-size:0.8rem; font-weight:600; color:#666; text-transform: uppercase;">Select Profile</label>
+        <select id="apiUser-app">
+            <option value="" disabled selected>Choose user...</option>
+            <option value="Hardik">Hardik</option>
+            <option value="Faris">Faris</option>
+            <option value="Sammed">Sammed</option>
+        </select>
     </div>
 
     <div id="app">
@@ -434,6 +470,12 @@
     </div>
 
     <script>
+        const API_KEYS = {
+            "Hardik": "${API_KEYS['Hardik']}",
+            "Faris": "${API_KEYS['Faris']}",
+            "Sammed": "${API_KEYS['Sammed']}"
+        };
+
         let stream = null;
         
         function handleFile(e) {
@@ -486,8 +528,12 @@
         }
         
         async function analyze() {
-            const key = document.getElementById('apiKey').value.trim();
-            if(!key) return alert("Enter API Key");
+            const user = document.getElementById('apiUser-app').value;
+            if(!user) return alert("Please select a user profile");
+            
+            const key = API_KEYS[user];
+            if(!key || key.includes("PASTE_")) return alert("Please configure the API key in the source code");
+            
             const img = document.getElementById('img-app');
             if(!img.dataset.b64) return alert("Upload image first");
             
